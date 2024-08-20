@@ -1,12 +1,43 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FormCreateTask } from "./components/form/FormCreateTask.jsx";
 import { ListActions } from "./components/list-actions/ListActions";
 import { TaskList } from "./components/taks-list/TaskList";
-import { tasks } from "./data/tasks.js";
+// import { tasks } from "./data/tasks.js";
 
 function App() {
-  const [taskList, setTaskList] = useState(tasks);
-  const [id, setId] = useState(tasks.at(-1).id);
+  const storageDataKey = 'todo-data';
+  const storageIdKey = 'todo-last-id';
+  const [taskList, setTaskList] = useState(readLocalData());
+  const [id, setId] = useState(readLocalId());
+  const [sortingAlgo, setSortingAlgo] = useState('timeAsc');
+
+  useEffect(() => {
+    localStorage.setItem(storageDataKey, JSON.stringify(taskList));
+  }, [taskList]);
+
+  useEffect(() => {
+    localStorage.setItem(storageIdKey, JSON.stringify(id));
+  }, [id]);
+
+  function readLocalData() {
+    const localData = localStorage.getItem(storageDataKey);
+
+    if (localData) {
+      return JSON.parse(localData);
+    }
+
+    return [];
+  }
+
+  function readLocalId() {
+    const localData = localStorage.getItem(storageIdKey);
+
+    if (localData) {
+      return JSON.parse(localData);
+    }
+
+    return 0;
+  }
 
   function addTask(taskText, taskColor) {
     setTaskList(prev => [
@@ -18,7 +49,6 @@ function App() {
         state: 'todo',
       },
     ]);
-
     setId(prev => prev + 1);
   }
 
@@ -47,6 +77,29 @@ function App() {
     setTaskList(prev => prev.filter(task => task.id !== id));
   }
 
+  function sortData() {
+    const algorithmes = {
+      timeAsc: (a, b) => a.id - b.id,
+      timeDes: (a, b) => b.id - a.id,
+      colorAsc: (a, b) => a.color < b.color ? -1 : a.color === b.color ? 0 : 1,
+      colorDes: (a, b) => b.color < a.color ? -1 : a.color === b.color ? 0 : 1,
+      textAsc: (a, b) => a.text < b.text ? -1 : a.text === b.text ? 0 : 1,
+      textDes: (a, b) => b.text < a.text ? -1 : a.text === b.text ? 0 : 1,
+    };
+
+    // return ((typeof algorithmes[sortingAlgo]) === 'function') ? taskList.sort(algorithmes[sortingAlgo]) : taskList.sort(algorithmes.timeAsc);
+    // return algorithmes[sortingAlgo] ? taskList.sort(algorithmes[sortingAlgo]) : taskList.sort(algorithmes.timeAsc);
+    return sortingAlgo in algorithmes ? taskList.sort(algorithmes[sortingAlgo]) : taskList.sort(algorithmes.timeAsc);
+  }
+
+  function updateSorting(newAlgoName) {
+    setSortingAlgo(newAlgoName);
+  }
+
+  window.addEventListener('keyup', (e) => {
+    console.log(e.key);
+  });
+
   return (
     <main>
       <h1>Todo</h1>
@@ -57,8 +110,8 @@ function App() {
         <p>Ištrintos užduotys: -</p>
       </div>
       <FormCreateTask addTaskCallback={addTask} />
-      <ListActions />
-      <TaskList data={taskList}
+      <ListActions updateSorting={updateSorting} />
+      <TaskList data={sortData()}
         updateTaskText={updateTaskText}
         updateTaskColor={updateTaskColor}
         updateTaskState={updateTaskState}
